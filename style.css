@@ -1,16 +1,15 @@
 :root {
-  --bg: #1e1233;
-  --card: #2c1b4d;
-  --card-alt: #3a2461;
-  --accent: #ff6f91;
-  --yellow: #ffd166;
+  --bg: #101418;
+  --card: #1b2129;
+  --card-alt: #222a33;
+  --accent: #5eead4;
   --done: #43d17c;
   --done-dim: #1e3f2c;
-  --danger: #ff5a5f;
-  --ink: #2a1440;
-  --text: #fbf4ff;
-  --muted: #b6a4d6;
-  --border: #47316b;
+  --danger: #f87171;
+  --ink: #06231f;
+  --text: #e7ecef;
+  --muted: #8a97a3;
+  --border: #2a3239;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
@@ -76,13 +75,17 @@ button, input, textarea {
 
 .house-btn {
   flex-shrink: 0;
+  width: 40px;
+  height: 40px;
   border: 1px solid var(--border);
   background: var(--card);
   color: var(--text);
-  padding: 0.5rem 0.8rem;
-  border-radius: 999px;
-  font-size: 0.85rem;
-  font-weight: 600;
+  border-radius: 50%;
+  font-size: 1.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   margin-top: 0.2rem;
 }
 
@@ -148,7 +151,7 @@ main {
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  background: var(--yellow);
+  background: var(--accent);
   color: var(--ink);
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
@@ -552,7 +555,7 @@ main {
   border-radius: 12px;
   padding: 1rem;
   margin: 0.75rem 0;
-  color: var(--yellow);
+  color: var(--accent);
 }
 
 .house-note {
