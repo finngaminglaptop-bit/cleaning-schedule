@@ -17,4 +17,9 @@ a household via a short code — not wired to a backend yet.
 Data is stored in the browser's `localStorage` only — nothing is sent
 anywhere, and each device/browser has its own list.
 
+Has a home-screen icon (`icon-*.png`, generated from `icon-192.png`'s
+checkmark design) and a `manifest.json` so "Add to Home Screen" on iPhone
+(or "Install app" on Android/Chrome) gets a proper icon and opens without
+Safari's browser chrome.
+
 Published automatically via GitHub Pages on every push to `main`.
