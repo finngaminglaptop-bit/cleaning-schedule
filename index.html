@@ -2,16 +2,103 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101418">
 <title>Cleaning Schedule</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main>
-  <h1>Cleaning Schedule</h1>
-  <p class="subtitle">Tap a task to mark it done. Resets automatically each week.</p>
-  <div id="schedule"></div>
-</main>
+
+<div class="app">
+
+  <header class="topbar">
+    <div class="topbar-text">
+      <h1 id="dayTitle">&nbsp;</h1>
+      <p id="dateSub">&nbsp;</p>
+    </div>
+    <div class="view-toggle" role="tablist">
+      <button type="button" class="toggle-btn active" data-view="daily" role="tab" aria-selected="true">Daily</button>
+      <button type="button" class="toggle-btn" data-view="weekly" role="tab" aria-selected="false">Weekly</button>
+    </div>
+  </header>
+
+  <main id="content">
+    <section id="dailyView" class="view"></section>
+    <section id="weeklyView" class="view hidden"></section>
+    <p id="emptyState" class="empty hidden">Nothing scheduled yet — tap <strong>Schedule</strong> to add your first task.</p>
+  </main>
+
+  <button type="button" id="fabSchedule" class="fab">
+    <span class="fab-icon">+</span>
+    <span class="fab-label">Schedule</span>
+  </button>
+
+</div>
+
+<div id="sheetOverlay" class="sheet-overlay hidden">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <h2 id="sheetTitle">New Task</h2>
+      <button type="button" id="closeSheet" class="icon-btn" aria-label="Close">&times;</button>
+    </div>
+
+    <form id="taskForm">
+      <div class="field">
+        <label>Pick an icon</label>
+        <div class="icon-grid" id="iconGrid"></div>
+        <input type="file" id="iconUpload" accept="image/*" hidden>
+      </div>
+
+      <div class="field">
+        <label for="taskName">Task</label>
+        <input id="taskName" name="taskName" placeholder="e.g. Vacuum living room" required maxlength="60">
+      </div>
+
+      <div class="field">
+        <label for="taskDesc">Notes <span class="optional">(optional)</span></label>
+        <textarea id="taskDesc" name="taskDesc" rows="2" placeholder="Any extra detail..." maxlength="200"></textarea>
+      </div>
+
+      <div class="field">
+        <label>About how long?</label>
+        <div class="chip-row" id="durationChips"></div>
+      </div>
+
+      <div class="field">
+        <label>When in the day?</label>
+        <div class="segmented" id="periodSeg"></div>
+      </div>
+
+      <div class="field">
+        <label>How often?</label>
+        <div class="segmented" id="frequencySeg"></div>
+      </div>
+
+      <div class="field hidden" id="weekdayField">
+        <label>Which day?</label>
+        <div class="chip-row" id="weekdayChips"></div>
+      </div>
+
+      <div class="field hidden" id="monthdayField">
+        <label>Which day of the month?</label>
+        <input type="number" id="monthDayInput" min="1" max="31" value="1" inputmode="numeric">
+      </div>
+
+      <div class="field">
+        <label>Repeats?</label>
+        <div class="segmented" id="repeatsSeg"></div>
+        <p class="hint" id="repeatsHint"></p>
+      </div>
+
+      <div class="sheet-actions">
+        <button type="button" id="deleteTaskBtn" class="btn danger hidden">Delete</button>
+        <button type="submit" class="btn primary">Save Task</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script src="script.js"></script>
 </body>
 </html>
