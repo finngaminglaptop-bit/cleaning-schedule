@@ -65,10 +65,11 @@
   let formIcon = { type: "emoji", value: ICONS[0].emoji };
   let formDuration = DURATIONS[1];
   let formPeriod = "morning";
+  let formRepeats = "repeat";
   let formFrequency = "daily";
   let formWeekday = WEEKDAYS[0].value;
   let formMonthDay = 1;
-  let formRepeats = "repeat";
+  let formOneTimeDate = "";
 
   /* ---------- storage ---------- */
 
@@ -111,12 +112,12 @@
     return d;
   }
 
-  function daysInMonth(year, month) {
-    return new Date(year, month + 1, 0).getDate();
+  function daysBetween(a, b) {
+    return Math.round((startOfDay(b) - startOfDay(a)) / 86400000);
   }
 
-  function clampMonthDay(year, month, day) {
-    return Math.min(day, daysInMonth(year, month));
+  function daysInMonth(year, month) {
+    return new Date(year, month + 1, 0).getDate();
   }
 
   function isoWeekKey(date) {
@@ -152,30 +153,6 @@
 
   /* ---------- occurrence logic ---------- */
 
-  function computeDueDate(frequency, weekday, monthDay, from) {
-    const d = startOfDay(from);
-    if (frequency === "daily") return toISODate(d);
-
-    if (frequency === "weekly") {
-      const diff = (weekday - d.getDay() + 7) % 7;
-      const target = new Date(d);
-      target.setDate(target.getDate() + diff);
-      return toISODate(target);
-    }
-
-    // monthly
-    let year = d.getFullYear();
-    let month = d.getMonth();
-    let day = clampMonthDay(year, month, monthDay);
-    let target = new Date(year, month, day);
-    if (target < d) {
-      month += 1;
-      day = clampMonthDay(year, month, monthDay);
-      target = new Date(year, month, day);
-    }
-    return toISODate(target);
-  }
-
   function occursOn(task, date) {
     if (!task.repeats) return toISODate(date) === task.dueDate;
     if (task.frequency === "daily") return true;
@@ -187,16 +164,29 @@
     return false;
   }
 
-  function tasksForDate(date) {
-    return tasks.filter((t) => occursOn(t, date));
-  }
+  // Finds the most recent weekly/monthly occurrence strictly before `before`,
+  // used to detect a missed instance that should carry over as "delayed".
+  // (Daily tasks are handled separately by missedStreakDays.)
+  function previousOccurrence(task, before) {
+    const created = startOfDay(new Date(task.createdAt));
+    const d = new Date(before);
 
-  function tasksForToday() {
-    const today = startOfDay(new Date());
-    return tasks.filter((t) => {
-      if (!t.repeats) return t.dueDate <= toISODate(today);
-      return occursOn(t, today);
-    });
+    if (task.frequency === "weekly") {
+      for (let i = 0; i < 7; i++) {
+        d.setDate(d.getDate() - 1);
+        if (d.getDay() === task.weekday) return d < created ? null : new Date(d);
+      }
+      return null;
+    }
+    if (task.frequency === "monthly") {
+      for (let i = 0; i < 366; i++) {
+        d.setDate(d.getDate() - 1);
+        const dim = daysInMonth(d.getFullYear(), d.getMonth());
+        if (d.getDate() === Math.min(task.monthDay, dim)) return d < created ? null : new Date(d);
+      }
+      return null;
+    }
+    return null;
   }
 
   function completionKey(task, date) {
@@ -210,25 +200,81 @@
     return !!completions[completionKey(task, date)];
   }
 
-  function toggleDone(task, date, cardEl) {
-    if (!task.repeats) {
-      if (cardEl) {
-        cardEl.style.opacity = "0";
-        setTimeout(() => {
-          tasks = tasks.filter((t) => t.id !== task.id);
-          saveTasks();
-          render();
-        }, 150);
-      } else {
-        tasks = tasks.filter((t) => t.id !== task.id);
-        saveTasks();
-        render();
+  // Builds { task, effectiveDate, delayDays } entries for a given calendar date.
+  // effectiveDate is what toggling "done" applies to (may be an earlier missed
+  // occurrence that carried over). includeCarryover should only be true for
+  // "today" — past/future days show the plain schedule.
+  function entriesForDate(date, { includeCarryover }) {
+    const iso = toISODate(date);
+    const entries = [];
+
+    tasks.forEach((task) => {
+      if (!task.repeats) {
+        const key = completionKey(task, date);
+        const completedOn = completions[key];
+        if (completedOn) {
+          if (completedOn === iso || task.dueDate === iso) {
+            entries.push({ task, effectiveDate: date, delayDays: null });
+          }
+          return;
+        }
+        if (task.dueDate === iso) {
+          entries.push({ task, effectiveDate: date, delayDays: null });
+        } else if (includeCarryover && task.dueDate < iso) {
+          entries.push({ task, effectiveDate: date, delayDays: daysBetween(new Date(task.dueDate), date) });
+        }
+        return;
       }
-      return;
+
+      if (task.frequency === "daily") {
+        // Daily tasks are always due today; a miss on a prior day can't be
+        // "made up", so just annotate today's card with how many days in a
+        // row were skipped rather than replacing it with a past instance.
+        const delayDays = includeCarryover ? missedStreakDays(task, date) : 0;
+        entries.push({ task, effectiveDate: date, delayDays: delayDays || null });
+        return;
+      }
+
+      if (occursOn(task, date)) {
+        entries.push({ task, effectiveDate: date, delayDays: null });
+        return;
+      }
+
+      if (includeCarryover) {
+        const prev = previousOccurrence(task, date);
+        if (prev && !completions[completionKey(task, prev)]) {
+          entries.push({ task, effectiveDate: prev, delayDays: daysBetween(prev, date) });
+        }
+      }
+    });
+
+    return entries;
+  }
+
+  // Counts consecutive prior days a daily task was due but not completed,
+  // stopping at the first completed day or the task's creation date.
+  function missedStreakDays(task, today) {
+    const created = startOfDay(new Date(task.createdAt));
+    const d = new Date(today);
+    let count = 0;
+    while (true) {
+      d.setDate(d.getDate() - 1);
+      if (d < created || count > 365) break;
+      if (completions[completionKey(task, d)]) break;
+      count++;
     }
-    const key = completionKey(task, date);
-    if (completions[key]) delete completions[key];
-    else completions[key] = true;
+    return count;
+  }
+
+  function toggleDone(task, effectiveDate) {
+    const key = completionKey(task, effectiveDate);
+    if (!task.repeats) {
+      if (completions[key]) delete completions[key];
+      else completions[key] = toISODate(startOfDay(new Date()));
+    } else {
+      if (completions[key]) delete completions[key];
+      else completions[key] = true;
+    }
     saveCompletions();
     render();
   }
@@ -254,17 +300,18 @@
     return span;
   }
 
-  function renderTaskCard(task, date, { showPeriodPill }) {
-    const done = isDone(task, date);
-    const overdue = !task.repeats && task.dueDate < toISODate(startOfDay(new Date()));
+  function renderTaskCard(entry, { showPeriodPill }) {
+    const { task, effectiveDate, delayDays } = entry;
+    const done = isDone(task, effectiveDate);
 
-    const card = el("div", "task-card" + (done ? " done" : "") + (overdue ? " overdue" : ""));
+    const showDelay = delayDays && !done;
+    const card = el("div", "task-card" + (done ? " done" : "") + (showDelay ? " delayed" : ""));
 
     const check = el("button", "task-check" + (done ? " done" : ""));
     check.type = "button";
     check.setAttribute("aria-label", done ? "Mark not done" : "Mark done");
     check.textContent = done ? "✓" : "";
-    check.addEventListener("click", () => toggleDone(task, date, card));
+    check.addEventListener("click", () => toggleDone(task, effectiveDate));
     card.appendChild(check);
 
     const icon = el("div", "task-icon");
@@ -280,8 +327,12 @@
       const p = PERIODS.find((p) => p.key === task.period);
       if (p) meta.appendChild(el("span", "task-pill", p.label));
     }
-    if (!task.repeats) meta.appendChild(el("span", "task-pill", overdue ? "One-time · overdue" : "One-time"));
+    if (!task.repeats) meta.appendChild(el("span", "task-pill", "One-time"));
     body.appendChild(meta);
+
+    if (showDelay) {
+      body.appendChild(el("div", "delay-note", `Delayed by ${delayDays} day${delayDays === 1 ? "" : "s"}`));
+    }
 
     if (task.description) body.appendChild(el("div", "task-desc", task.description));
     card.appendChild(body);
@@ -301,18 +352,18 @@
     const container = document.getElementById("dailyView");
     container.innerHTML = "";
     const today = startOfDay(new Date());
-    const todaysTasks = tasksForToday();
+    const entries = entriesForDate(today, { includeCarryover: true });
 
     PERIODS.forEach((period) => {
-      const items = todaysTasks.filter((t) => t.period === period.key);
+      const items = entries.filter((e) => e.task.period === period.key);
       if (!items.length) return;
       const group = el("div", "period-group");
       group.appendChild(el("h2", null, period.label));
-      items.forEach((t) => group.appendChild(renderTaskCard(t, today, { showPeriodPill: false })));
+      items.forEach((entry) => group.appendChild(renderTaskCard(entry, { showPeriodPill: false })));
       container.appendChild(group);
     });
 
-    if (!todaysTasks.length && tasks.length) {
+    if (!entries.length && tasks.length) {
       container.appendChild(el("p", "no-tasks", "Nothing scheduled for today."));
     }
 
@@ -336,14 +387,14 @@
       if (isToday) heading.appendChild(el("span", "today-pill", "Today"));
       section.appendChild(heading);
 
-      const items = tasksForDate(date).sort(
-        (a, b) => PERIODS.findIndex((p) => p.key === a.period) - PERIODS.findIndex((p) => p.key === b.period)
+      const entries = entriesForDate(date, { includeCarryover: isToday }).sort(
+        (a, b) => PERIODS.findIndex((p) => p.key === a.task.period) - PERIODS.findIndex((p) => p.key === b.task.period)
       );
 
-      if (!items.length) {
+      if (!entries.length) {
         section.appendChild(el("p", "no-tasks", "Nothing scheduled"));
       } else {
-        items.forEach((t) => section.appendChild(renderTaskCard(t, date, { showPeriodPill: true })));
+        entries.forEach((entry) => section.appendChild(renderTaskCard(entry, { showPeriodPill: true })));
       }
 
       container.appendChild(section);
@@ -433,18 +484,20 @@
     grid.appendChild(uploadTile);
   }
 
-  function refreshFrequencyFields() {
-    document.getElementById("weekdayField").classList.toggle("hidden", formFrequency !== "weekly");
-    document.getElementById("monthdayField").classList.toggle("hidden", formFrequency !== "monthly");
+  function refreshRepeatsFields() {
+    const isOnce = formRepeats === "once";
+    document.getElementById("frequencyField").classList.toggle("hidden", isOnce);
+    document.getElementById("weekdayField").classList.toggle("hidden", isOnce || formFrequency !== "weekly");
+    document.getElementById("monthdayField").classList.toggle("hidden", isOnce || formFrequency !== "monthly");
+    document.getElementById("oneTimeDateField").classList.toggle("hidden", !isOnce);
   }
 
   function refreshRepeatsHint() {
     const hint = document.getElementById("repeatsHint");
-    if (formRepeats === "repeat") {
-      hint.textContent = "This task keeps coming back on its schedule.";
-    } else {
-      hint.textContent = "This task appears once on its next due date, then disappears once done.";
-    }
+    hint.textContent =
+      formRepeats === "repeat"
+        ? "This task keeps coming back on its schedule."
+        : "Pick the exact day you'll do this — it stays marked done afterward.";
   }
 
   function resetForm() {
@@ -452,13 +505,15 @@
     formIcon = { type: "emoji", value: ICONS[0].emoji };
     formDuration = DURATIONS[1];
     formPeriod = "morning";
+    formRepeats = "repeat";
     formFrequency = "daily";
     formWeekday = WEEKDAYS[0].value;
     formMonthDay = new Date().getDate();
-    formRepeats = "repeat";
+    formOneTimeDate = toISODate(new Date());
     document.getElementById("taskName").value = "";
     document.getElementById("taskDesc").value = "";
     document.getElementById("monthDayInput").value = String(formMonthDay);
+    document.getElementById("oneTimeDateInput").value = formOneTimeDate;
     document.getElementById("deleteTaskBtn").classList.add("hidden");
     document.getElementById("sheetTitle").textContent = "New Task";
   }
@@ -480,9 +535,12 @@
       formPeriod = key;
       populateFormUI();
     });
+    buildSegmented(document.getElementById("repeatsSeg"), REPEATS, formRepeats, (key) => {
+      formRepeats = key;
+      populateFormUI();
+    });
     buildSegmented(document.getElementById("frequencySeg"), FREQUENCIES, formFrequency, (key) => {
       formFrequency = key;
-      refreshFrequencyFields();
       populateFormUI();
     });
     buildChipRow(
@@ -496,12 +554,7 @@
         populateFormUI();
       }
     );
-    buildSegmented(document.getElementById("repeatsSeg"), REPEATS, formRepeats, (key) => {
-      formRepeats = key;
-      refreshRepeatsHint();
-      populateFormUI();
-    });
-    refreshFrequencyFields();
+    refreshRepeatsFields();
     refreshRepeatsHint();
   }
 
@@ -513,11 +566,13 @@
       formIcon = task.icon;
       formDuration = task.duration;
       formPeriod = task.period;
-      formFrequency = task.frequency;
+      formRepeats = task.repeats ? "repeat" : "once";
+      formFrequency = task.frequency || "daily";
       formWeekday = task.weekday ?? WEEKDAYS[0].value;
       formMonthDay = task.monthDay ?? new Date().getDate();
-      formRepeats = task.repeats ? "repeat" : "once";
+      formOneTimeDate = task.dueDate || toISODate(new Date());
       document.getElementById("monthDayInput").value = String(formMonthDay);
+      document.getElementById("oneTimeDateInput").value = formOneTimeDate;
       document.getElementById("deleteTaskBtn").classList.remove("hidden");
       document.getElementById("sheetTitle").textContent = "Edit Task";
     } else {
@@ -549,6 +604,7 @@
     if (!name) return;
     const description = document.getElementById("taskDesc").value.trim();
     const monthDay = Math.min(31, Math.max(1, parseInt(document.getElementById("monthDayInput").value, 10) || 1));
+    const repeats = formRepeats === "repeat";
 
     const base = {
       name,
@@ -556,14 +612,19 @@
       icon: formIcon,
       duration: formDuration,
       period: formPeriod,
-      frequency: formFrequency,
-      weekday: formFrequency === "weekly" ? formWeekday : undefined,
-      monthDay: formFrequency === "monthly" ? monthDay : undefined,
-      repeats: formRepeats === "repeat",
+      repeats,
     };
 
-    if (!base.repeats) {
-      base.dueDate = computeDueDate(formFrequency, formWeekday, monthDay, new Date());
+    if (repeats) {
+      base.frequency = formFrequency;
+      base.weekday = formFrequency === "weekly" ? formWeekday : undefined;
+      base.monthDay = formFrequency === "monthly" ? monthDay : undefined;
+      base.dueDate = undefined;
+    } else {
+      base.dueDate = document.getElementById("oneTimeDateInput").value || toISODate(new Date());
+      base.frequency = undefined;
+      base.weekday = undefined;
+      base.monthDay = undefined;
     }
 
     if (editingId) {
@@ -585,6 +646,44 @@
     render();
   }
 
+  /* ---------- house code (sharing UI shell) ---------- */
+
+  function openHouseSheet() {
+    const content = document.getElementById("houseContent");
+    content.innerHTML = "";
+    content.appendChild(
+      el(
+        "p",
+        "house-note",
+        "Share your schedule with everyone in your household using a short code — anyone with the code sees the same tasks."
+      )
+    );
+
+    const options = el("div", "house-options");
+    const createBtn = el("button", "btn primary", "Create a household");
+    createBtn.type = "button";
+    const joinBtn = el("button", "btn secondary", "Join with a code");
+    joinBtn.type = "button";
+    options.appendChild(createBtn);
+    options.appendChild(joinBtn);
+    content.appendChild(options);
+
+    const pending = el(
+      "p",
+      "house-note hidden",
+      "Not connected yet — sharing tasks needs a small cloud database to sync between phones. Ask to have this wired up once that's set up."
+    );
+    content.appendChild(pending);
+
+    [createBtn, joinBtn].forEach((btn) => btn.addEventListener("click", () => pending.classList.remove("hidden")));
+
+    document.getElementById("houseOverlay").classList.remove("hidden");
+  }
+
+  function closeHouseSheet() {
+    document.getElementById("houseOverlay").classList.add("hidden");
+  }
+
   /* ---------- wiring ---------- */
 
   function init() {
@@ -600,6 +699,15 @@
     document.getElementById("taskForm").addEventListener("submit", handleSubmit);
     document.getElementById("deleteTaskBtn").addEventListener("click", handleDelete);
     document.getElementById("iconUpload").addEventListener("change", handleIconUpload);
+    document.getElementById("oneTimeDateInput").addEventListener("change", (e) => {
+      formOneTimeDate = e.target.value || formOneTimeDate;
+    });
+
+    document.getElementById("houseCodeBtn").addEventListener("click", openHouseSheet);
+    document.getElementById("closeHouseSheet").addEventListener("click", closeHouseSheet);
+    document.getElementById("houseOverlay").addEventListener("click", (e) => {
+      if (e.target.id === "houseOverlay") closeHouseSheet();
+    });
 
     render();
   }

@@ -1,13 +1,16 @@
 :root {
-  --bg: #101418;
-  --card: #1b2129;
-  --card-alt: #222a33;
-  --accent: #5eead4;
-  --accent-dim: #2f4b47;
-  --danger: #f87171;
-  --text: #e7ecef;
-  --muted: #8a97a3;
-  --border: #2a3239;
+  --bg: #1e1233;
+  --card: #2c1b4d;
+  --card-alt: #3a2461;
+  --accent: #ff6f91;
+  --yellow: #ffd166;
+  --done: #43d17c;
+  --done-dim: #1e3f2c;
+  --danger: #ff5a5f;
+  --ink: #2a1440;
+  --text: #fbf4ff;
+  --muted: #b6a4d6;
+  --border: #47316b;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
@@ -52,6 +55,13 @@ button, input, textarea {
   z-index: 5;
 }
 
+.topbar-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .topbar-text h1 {
   margin: 0;
   font-size: 1.9rem;
@@ -62,6 +72,18 @@ button, input, textarea {
   margin: 0.15rem 0 0;
   color: var(--muted);
   font-size: 0.95rem;
+}
+
+.house-btn {
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 0.2rem;
 }
 
 .view-toggle {
@@ -86,7 +108,7 @@ button, input, textarea {
 
 .toggle-btn.active {
   background: var(--accent);
-  color: #06231f;
+  color: var(--ink);
 }
 
 /* ---------- Content ---------- */
@@ -126,8 +148,8 @@ main {
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  background: var(--accent);
-  color: #06231f;
+  background: var(--yellow);
+  color: var(--ink);
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
   font-weight: 700;
@@ -158,11 +180,15 @@ main {
   border-radius: 14px;
   padding: 0.8rem 0.8rem;
   margin-bottom: 0.6rem;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, background-color 0.2s, box-shadow 0.2s;
 }
 
-.task-card.overdue {
-  box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.4);
+.task-card.delayed {
+  box-shadow: inset 0 0 0 1px rgba(255, 90, 95, 0.5);
+}
+
+.task-card.done {
+  background: var(--done-dim);
 }
 
 .task-check {
@@ -181,9 +207,9 @@ main {
 }
 
 .task-check.done {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #06231f;
+  background: var(--done);
+  border-color: var(--done);
+  color: #0b2916;
 }
 
 .task-icon {
@@ -235,6 +261,13 @@ main {
   border-radius: 999px;
 }
 
+.delay-note {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--danger);
+}
+
 .task-desc {
   margin-top: 0.35rem;
   font-size: 0.85rem;
@@ -269,7 +302,7 @@ main {
   right: max(1.25rem, env(safe-area-inset-right));
   bottom: calc(1.5rem + env(safe-area-inset-bottom));
   background: var(--accent);
-  color: #06231f;
+  color: var(--ink);
   border: none;
   border-radius: 999px;
   padding: 0.85rem 1.3rem;
@@ -278,7 +311,7 @@ main {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 8px 24px rgba(255, 111, 145, 0.35);
   z-index: 20;
 }
 
@@ -289,7 +322,7 @@ main {
 .sheet-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(12, 6, 22, 0.65);
   display: flex;
   align-items: flex-end;
   z-index: 30;
@@ -351,15 +384,18 @@ main {
 .field input[type="text"],
 .field input:not([type]),
 .field input[type="number"],
+.field input[type="date"],
 .field textarea,
 #taskName,
-#monthDayInput {
+#monthDayInput,
+#oneTimeDateInput {
   width: 100%;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0.7rem 0.8rem;
   font-size: 1rem;
+  color-scheme: dark;
 }
 
 .field textarea { resize: vertical; }
@@ -390,7 +426,7 @@ main {
 .chip.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #06231f;
+  color: var(--ink);
   font-weight: 700;
 }
 
@@ -415,7 +451,7 @@ main {
 
 .segmented button.active {
   background: var(--accent);
-  color: #06231f;
+  color: var(--ink);
 }
 
 /* icon grid */
@@ -441,7 +477,7 @@ main {
 
 .icon-option.active {
   border-color: var(--accent);
-  background: var(--accent-dim);
+  background: var(--card-alt);
 }
 
 .icon-option img {
@@ -482,7 +518,12 @@ main {
 
 .btn.primary {
   background: var(--accent);
-  color: #06231f;
+  color: var(--ink);
+}
+
+.btn.secondary {
+  background: var(--card-alt);
+  color: var(--text);
 }
 
 .btn.danger {
@@ -491,6 +532,34 @@ main {
   color: var(--danger);
   flex: 0 0 auto;
   padding: 0.85rem 1.1rem;
+}
+
+/* ---------- House code sheet ---------- */
+
+.house-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.house-code-display {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  background: var(--card);
+  border-radius: 12px;
+  padding: 1rem;
+  margin: 0.75rem 0;
+  color: var(--yellow);
+}
+
+.house-note {
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0.5rem 0 1rem;
 }
 
 /* larger screens: keep phone-like proportions, don't stretch content thin */
