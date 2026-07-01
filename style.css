@@ -1,0 +1,78 @@
+:root {
+  --bg: #101418;
+  --card: #1b2129;
+  --accent: #5eead4;
+  --text: #e7ecef;
+  --muted: #8a97a3;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+}
+
+main {
+  width: 100%;
+  max-width: 640px;
+}
+
+h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.75rem;
+}
+
+.subtitle {
+  color: var(--muted);
+  margin: 0 0 1.5rem;
+  font-size: 0.9rem;
+}
+
+#schedule {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.day {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+}
+
+.day h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1rem;
+  color: var(--accent);
+}
+
+.task {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.task input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.task span {
+  transition: color 0.15s, text-decoration 0.15s;
+}
+
+.task.done span {
+  color: var(--muted);
+  text-decoration: line-through;
+}
