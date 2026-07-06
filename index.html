@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#101418">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Cleaning">
-<title>Cleaning Schedule</title>
+<meta name="apple-mobile-web-app-title" content="Schoonmaak">
+<title>Schoonmaakschema</title>
 <link rel="icon" href="icon-32.png">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="manifest" href="manifest.json">
@@ -23,23 +23,23 @@
         <h1 id="dayTitle">&nbsp;</h1>
         <p id="dateSub">&nbsp;</p>
       </div>
-      <button type="button" id="houseCodeBtn" class="house-btn" aria-label="House code">🏠</button>
+      <button type="button" id="houseCodeBtn" class="house-btn" aria-label="Huiscode">🏠</button>
     </div>
     <div class="view-toggle" role="tablist">
-      <button type="button" class="toggle-btn active" data-view="daily" role="tab" aria-selected="true">Daily</button>
-      <button type="button" class="toggle-btn" data-view="weekly" role="tab" aria-selected="false">Weekly</button>
+      <button type="button" class="toggle-btn active" data-view="daily" role="tab" aria-selected="true">Dagelijks</button>
+      <button type="button" class="toggle-btn" data-view="weekly" role="tab" aria-selected="false">Wekelijks</button>
     </div>
   </header>
 
   <main id="content">
     <section id="dailyView" class="view"></section>
     <section id="weeklyView" class="view hidden"></section>
-    <p id="emptyState" class="empty hidden">Nothing scheduled yet — tap <strong>Schedule</strong> to add your first task.</p>
+    <p id="emptyState" class="empty hidden">Nog niets gepland — tik op <strong>Plannen</strong> om je eerste taak toe te voegen.</p>
   </main>
 
   <button type="button" id="fabSchedule" class="fab">
     <span class="fab-icon">+</span>
-    <span class="fab-label">Schedule</span>
+    <span class="fab-label">Plannen</span>
   </button>
 
 </div>
@@ -48,66 +48,66 @@
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
     <div class="sheet-handle"></div>
     <div class="sheet-header">
-      <h2 id="sheetTitle">New Task</h2>
-      <button type="button" id="closeSheet" class="icon-btn" aria-label="Close">&times;</button>
+      <h2 id="sheetTitle">Nieuwe taak</h2>
+      <button type="button" id="closeSheet" class="icon-btn" aria-label="Sluiten">&times;</button>
     </div>
 
     <form id="taskForm">
       <div class="field">
-        <label>Pick an icon</label>
+        <label>Kies een icoon</label>
         <div class="icon-grid" id="iconGrid"></div>
         <input type="file" id="iconUpload" accept="image/*" hidden>
       </div>
 
       <div class="field">
-        <label for="taskName">Task</label>
-        <input id="taskName" name="taskName" placeholder="e.g. Vacuum living room" required maxlength="60">
+        <label for="taskName">Taak</label>
+        <input id="taskName" name="taskName" placeholder="bijv. Woonkamer stofzuigen" required maxlength="60">
       </div>
 
       <div class="field">
-        <label for="taskDesc">Notes <span class="optional">(optional)</span></label>
-        <textarea id="taskDesc" name="taskDesc" rows="2" placeholder="Any extra detail..." maxlength="200"></textarea>
+        <label for="taskDesc">Notities <span class="optional">(optioneel)</span></label>
+        <textarea id="taskDesc" name="taskDesc" rows="2" placeholder="Extra details..." maxlength="200"></textarea>
       </div>
 
       <div class="field">
-        <label>About how long?</label>
+        <label>Hoe lang ongeveer?</label>
         <div class="chip-row" id="durationChips"></div>
       </div>
 
       <div class="field">
-        <label>When in the day?</label>
+        <label>Wanneer op de dag?</label>
         <div class="segmented" id="periodSeg"></div>
       </div>
 
       <div class="field">
-        <label>Repeats?</label>
+        <label>Herhalen?</label>
         <div class="segmented" id="repeatsSeg"></div>
         <p class="hint" id="repeatsHint"></p>
       </div>
 
       <div class="field" id="frequencyField">
-        <label>How often?</label>
+        <label>Hoe vaak?</label>
         <div class="segmented" id="frequencySeg"></div>
       </div>
 
       <div class="field hidden" id="weekdayField">
-        <label>Which day?</label>
+        <label>Welke dag?</label>
         <div class="chip-row" id="weekdayChips"></div>
       </div>
 
       <div class="field hidden" id="monthdayField">
-        <label>Which day of the month?</label>
+        <label>Welke dag van de maand?</label>
         <input type="number" id="monthDayInput" min="1" max="31" value="1" inputmode="numeric">
       </div>
 
       <div class="field hidden" id="oneTimeDateField">
-        <label for="oneTimeDateInput">When will you do it?</label>
+        <label for="oneTimeDateInput">Wanneer ga je dit doen?</label>
         <input type="date" id="oneTimeDateInput">
       </div>
 
       <div class="sheet-actions">
-        <button type="button" id="deleteTaskBtn" class="btn danger hidden">Delete</button>
-        <button type="submit" class="btn primary">Save Task</button>
+        <button type="button" id="deleteTaskBtn" class="btn danger hidden">Verwijderen</button>
+        <button type="submit" class="btn primary">Taak opslaan</button>
       </div>
     </form>
   </div>
@@ -117,8 +117,8 @@
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="houseTitle">
     <div class="sheet-handle"></div>
     <div class="sheet-header">
-      <h2 id="houseTitle">House Code</h2>
-      <button type="button" id="closeHouseSheet" class="icon-btn" aria-label="Close">&times;</button>
+      <h2 id="houseTitle">Huiscode</h2>
+      <button type="button" id="closeHouseSheet" class="icon-btn" aria-label="Sluiten">&times;</button>
     </div>
     <div id="houseContent"></div>
   </div>

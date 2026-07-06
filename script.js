@@ -4,51 +4,51 @@
   /* ---------- constants ---------- */
 
   const ICONS = [
-    { key: "vacuum", emoji: "🧹", label: "Vacuum" },
-    { key: "laundry", emoji: "🧺", label: "Laundry" },
-    { key: "dishes", emoji: "🍽️", label: "Dishes" },
-    { key: "mop", emoji: "🪣", label: "Mop" },
-    { key: "bathroom", emoji: "🚿", label: "Bathroom" },
-    { key: "dusting", emoji: "🧴", label: "Dusting" },
-    { key: "bed", emoji: "🛏️", label: "Bedroom" },
-    { key: "windows", emoji: "🪟", label: "Windows" },
-    { key: "trash", emoji: "🗑️", label: "Trash" },
-    { key: "kitchen", emoji: "🍳", label: "Kitchen" },
-    { key: "plants", emoji: "🪴", label: "Plants" },
-    { key: "pets", emoji: "🐾", label: "Pets" },
-    { key: "shopping", emoji: "🛒", label: "Shopping" },
-    { key: "ironing", emoji: "👕", label: "Ironing" },
-    { key: "general", emoji: "✨", label: "General" },
+    { key: "vacuum", emoji: "🧹", label: "Stofzuigen" },
+    { key: "laundry", emoji: "🧺", label: "Wasgoed" },
+    { key: "dishes", emoji: "🍽️", label: "Afwas" },
+    { key: "mop", emoji: "🪣", label: "Dweilen" },
+    { key: "bathroom", emoji: "🚿", label: "Badkamer" },
+    { key: "dusting", emoji: "🧴", label: "Stof afnemen" },
+    { key: "bed", emoji: "🛏️", label: "Slaapkamer" },
+    { key: "windows", emoji: "🪟", label: "Ramen" },
+    { key: "trash", emoji: "🗑️", label: "Vuilnis" },
+    { key: "kitchen", emoji: "🍳", label: "Keuken" },
+    { key: "plants", emoji: "🪴", label: "Planten" },
+    { key: "pets", emoji: "🐾", label: "Huisdieren" },
+    { key: "shopping", emoji: "🛒", label: "Boodschappen" },
+    { key: "ironing", emoji: "👕", label: "Strijken" },
+    { key: "general", emoji: "✨", label: "Algemeen" },
   ];
 
   const DURATIONS = [5, 15, 30, 45, 60, 90, 120];
 
   const PERIODS = [
-    { key: "morning", label: "Morning" },
-    { key: "afternoon", label: "Afternoon" },
-    { key: "evening", label: "Evening" },
+    { key: "morning", label: "Ochtend" },
+    { key: "afternoon", label: "Middag" },
+    { key: "evening", label: "Avond" },
   ];
 
   // value matches Date#getDay() (0 = Sunday)
   const WEEKDAYS = [
-    { key: "mon", label: "Mon", value: 1 },
-    { key: "tue", label: "Tue", value: 2 },
-    { key: "wed", label: "Wed", value: 3 },
-    { key: "thu", label: "Thu", value: 4 },
-    { key: "fri", label: "Fri", value: 5 },
-    { key: "sat", label: "Sat", value: 6 },
-    { key: "sun", label: "Sun", value: 0 },
+    { key: "mon", label: "Ma", value: 1 },
+    { key: "tue", label: "Di", value: 2 },
+    { key: "wed", label: "Wo", value: 3 },
+    { key: "thu", label: "Do", value: 4 },
+    { key: "fri", label: "Vr", value: 5 },
+    { key: "sat", label: "Za", value: 6 },
+    { key: "sun", label: "Zo", value: 0 },
   ];
 
   const FREQUENCIES = [
-    { key: "daily", label: "Daily" },
-    { key: "weekly", label: "Weekly" },
-    { key: "monthly", label: "Monthly" },
+    { key: "daily", label: "Dagelijks" },
+    { key: "weekly", label: "Wekelijks" },
+    { key: "monthly", label: "Maandelijks" },
   ];
 
   const REPEATS = [
-    { key: "repeat", label: "Every time" },
-    { key: "once", label: "Just once" },
+    { key: "repeat", label: "Elke keer" },
+    { key: "once", label: "Eenmalig" },
   ];
 
   const TASKS_KEY = "cleaning-tasks";
@@ -137,18 +137,18 @@
   }
 
   function formatDayTitle(date) {
-    return date.toLocaleDateString(navigator.language || "en-US", { weekday: "long" });
+    return date.toLocaleDateString("nl-NL", { weekday: "long" });
   }
 
   function formatDateSub(date) {
-    return date.toLocaleDateString(navigator.language || "en-US", { month: "long", day: "numeric" });
+    return date.toLocaleDateString("nl-NL", { month: "long", day: "numeric" });
   }
 
   function formatDuration(mins) {
     if (mins < 60) return `${mins}m`;
     const h = Math.floor(mins / 60);
     const m = mins % 60;
-    return m ? `${h}h ${m}m` : `${h}h`;
+    return m ? `${h}u ${m}m` : `${h}u`;
   }
 
   /* ---------- occurrence logic ---------- */
@@ -309,7 +309,7 @@
 
     const check = el("button", "task-check" + (done ? " done" : ""));
     check.type = "button";
-    check.setAttribute("aria-label", done ? "Mark not done" : "Mark done");
+    check.setAttribute("aria-label", done ? "Markeer als niet gedaan" : "Markeer als gedaan");
     check.textContent = done ? "✓" : "";
     check.addEventListener("click", () => toggleDone(task, effectiveDate));
     card.appendChild(check);
@@ -327,11 +327,11 @@
       const p = PERIODS.find((p) => p.key === task.period);
       if (p) meta.appendChild(el("span", "task-pill", p.label));
     }
-    if (!task.repeats) meta.appendChild(el("span", "task-pill", "One-time"));
+    if (!task.repeats) meta.appendChild(el("span", "task-pill", "Eenmalig"));
     body.appendChild(meta);
 
     if (showDelay) {
-      body.appendChild(el("div", "delay-note", `Delayed by ${delayDays} day${delayDays === 1 ? "" : "s"}`));
+      body.appendChild(el("div", "delay-note", `Vertraagd met ${delayDays} dag${delayDays === 1 ? "" : "en"}`));
     }
 
     if (task.description) body.appendChild(el("div", "task-desc", task.description));
@@ -340,7 +340,7 @@
     const actions = el("div", "task-actions");
     const editBtn = el("button", "icon-btn", "✎");
     editBtn.type = "button";
-    editBtn.setAttribute("aria-label", "Edit task");
+    editBtn.setAttribute("aria-label", "Taak bewerken");
     editBtn.addEventListener("click", () => openSheet(task));
     actions.appendChild(editBtn);
     card.appendChild(actions);
@@ -364,7 +364,7 @@
     });
 
     if (!entries.length && tasks.length) {
-      container.appendChild(el("p", "no-tasks", "Nothing scheduled for today."));
+      container.appendChild(el("p", "no-tasks", "Niets gepland voor vandaag."));
     }
 
     document.getElementById("emptyState").classList.toggle("hidden", tasks.length !== 0);
@@ -384,7 +384,7 @@
       const section = el("div", "day-section");
       const heading = el("h2");
       heading.appendChild(document.createTextNode(`${formatDayTitle(date)}, ${formatDateSub(date)}`));
-      if (isToday) heading.appendChild(el("span", "today-pill", "Today"));
+      if (isToday) heading.appendChild(el("span", "today-pill", "Vandaag"));
       section.appendChild(heading);
 
       const entries = entriesForDate(date, { includeCarryover: isToday }).sort(
@@ -392,7 +392,7 @@
       );
 
       if (!entries.length) {
-        section.appendChild(el("p", "no-tasks", "Nothing scheduled"));
+        section.appendChild(el("p", "no-tasks", "Niets gepland"));
       } else {
         entries.forEach((entry) => section.appendChild(renderTaskCard(entry, { showPeriodPill: true })));
       }
@@ -471,14 +471,14 @@
     const isCustom = formIcon.type === "custom";
     const uploadTile = el("button", "icon-option upload-tile" + (isCustom ? " active" : ""));
     uploadTile.type = "button";
-    uploadTile.setAttribute("aria-label", "Upload your own icon");
+    uploadTile.setAttribute("aria-label", "Eigen icoon uploaden");
     if (isCustom) {
       const img = document.createElement("img");
       img.src = formIcon.value;
       img.alt = "";
       uploadTile.appendChild(img);
     } else {
-      uploadTile.innerHTML = "📷<span class=\"upload-label\">Upload</span>";
+      uploadTile.innerHTML = "📷<span class=\"upload-label\">Uploaden</span>";
     }
     uploadTile.addEventListener("click", () => document.getElementById("iconUpload").click());
     grid.appendChild(uploadTile);
@@ -496,8 +496,8 @@
     const hint = document.getElementById("repeatsHint");
     hint.textContent =
       formRepeats === "repeat"
-        ? "This task keeps coming back on its schedule."
-        : "Pick the exact day you'll do this — it stays marked done afterward.";
+        ? "Deze taak blijft terugkomen volgens het schema."
+        : "Kies de exacte dag waarop je dit gaat doen — hij blijft daarna als voltooid gemarkeerd.";
   }
 
   function resetForm() {
@@ -515,7 +515,7 @@
     document.getElementById("monthDayInput").value = String(formMonthDay);
     document.getElementById("oneTimeDateInput").value = formOneTimeDate;
     document.getElementById("deleteTaskBtn").classList.add("hidden");
-    document.getElementById("sheetTitle").textContent = "New Task";
+    document.getElementById("sheetTitle").textContent = "Nieuwe taak";
   }
 
   function populateFormUI() {
@@ -574,7 +574,7 @@
       document.getElementById("monthDayInput").value = String(formMonthDay);
       document.getElementById("oneTimeDateInput").value = formOneTimeDate;
       document.getElementById("deleteTaskBtn").classList.remove("hidden");
-      document.getElementById("sheetTitle").textContent = "Edit Task";
+      document.getElementById("sheetTitle").textContent = "Taak bewerken";
     } else {
       resetForm();
     }
@@ -655,14 +655,14 @@
       el(
         "p",
         "house-note",
-        "Share your schedule with everyone in your household using a short code — anyone with the code sees the same tasks."
+        "Deel je schema met iedereen in je huishouden met een korte code — iedereen met de code ziet dezelfde taken."
       )
     );
 
     const options = el("div", "house-options");
-    const createBtn = el("button", "btn primary", "Create a household");
+    const createBtn = el("button", "btn primary", "Huishouden aanmaken");
     createBtn.type = "button";
-    const joinBtn = el("button", "btn secondary", "Join with a code");
+    const joinBtn = el("button", "btn secondary", "Deelnemen met een code");
     joinBtn.type = "button";
     options.appendChild(createBtn);
     options.appendChild(joinBtn);
@@ -671,7 +671,7 @@
     const pending = el(
       "p",
       "house-note hidden",
-      "Not connected yet — sharing tasks needs a small cloud database to sync between phones. Ask to have this wired up once that's set up."
+      "Nog niet verbonden — het delen van taken vereist een kleine cloud-database om tussen telefoons te synchroniseren. Vraag me dit te koppelen zodra dat is ingesteld."
     );
     content.appendChild(pending);
 

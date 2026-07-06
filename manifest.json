@@ -1,6 +1,6 @@
 {
-  "name": "Cleaning Schedule",
-  "short_name": "Cleaning",
+  "name": "Schoonmaakschema",
+  "short_name": "Schoonmaak",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#101418",
