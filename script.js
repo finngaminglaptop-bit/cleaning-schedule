@@ -53,6 +53,18 @@
 
   const TASKS_KEY = "cleaning-tasks";
   const COMPLETIONS_KEY = "cleaning-completions";
+  const HOUSEHOLD_KEY = "cleaning-household";
+
+  // Shared Firebase project also used by other apps (flashcard-maker,
+  // all-you-can-play) — this app only touches its own "households" collection.
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyBhJcLbM8mUqiULgmHUPZwr7so5n3pca8s",
+    authDomain: "flashcard-maker-61023.firebaseapp.com",
+    projectId: "flashcard-maker-61023",
+    storageBucket: "flashcard-maker-61023.firebasestorage.app",
+    messagingSenderId: "880797755117",
+    appId: "1:880797755117:web:d5201d3a4caa8e8ae90ee4",
+  };
 
   /* ---------- state ---------- */
 
@@ -60,6 +72,8 @@
   let completions = loadCompletions();
   let currentView = "daily";
   let editingId = null;
+  let householdCode = localStorage.getItem(HOUSEHOLD_KEY) || null;
+  let householdUnsub = null;
 
   // in-progress form selections
   let formIcon = { type: "emoji", value: ICONS[0].emoji };
@@ -95,6 +109,94 @@
 
   function saveCompletions() {
     localStorage.setItem(COMPLETIONS_KEY, JSON.stringify(completions));
+  }
+
+  // Writes go to the shared household doc when connected, otherwise localStorage.
+  function persistTasks() {
+    if (householdCode) pushHouseholdState();
+    else saveTasks();
+  }
+
+  function persistCompletions() {
+    if (householdCode) pushHouseholdState();
+    else saveCompletions();
+  }
+
+  /* ---------- household sync (Firestore) ---------- */
+
+  let _fbCache = null;
+  async function fbHousehold() {
+    if (_fbCache) return _fbCache;
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js");
+    const fs = await import("https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js");
+    const app = initializeApp(FIREBASE_CONFIG);
+    _fbCache = { db: fs.getFirestore(app), ...fs };
+    return _fbCache;
+  }
+
+  function genHouseholdCode() {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  }
+
+  async function pushHouseholdState() {
+    if (!householdCode) return;
+    try {
+      const { db, doc, updateDoc } = await fbHousehold();
+      await updateDoc(doc(db, "households", householdCode), { tasks, completions });
+    } catch (err) {
+      console.error("Synchroniseren met huishouden is mislukt", err);
+    }
+  }
+
+  function startHouseholdListener(code) {
+    stopHouseholdListener();
+    fbHousehold().then(({ db, doc, onSnapshot }) => {
+      householdUnsub = onSnapshot(doc(db, "households", code), (snap) => {
+        if (!snap.exists()) return;
+        const data = snap.data();
+        tasks = data.tasks || [];
+        completions = data.completions || {};
+        render();
+      });
+    });
+  }
+
+  function stopHouseholdListener() {
+    if (householdUnsub) {
+      householdUnsub();
+      householdUnsub = null;
+    }
+  }
+
+  async function createHousehold() {
+    const { db, doc, setDoc, serverTimestamp } = await fbHousehold();
+    const code = genHouseholdCode();
+    await setDoc(doc(db, "households", code), { code, createdAt: serverTimestamp(), tasks, completions });
+    householdCode = code;
+    localStorage.setItem(HOUSEHOLD_KEY, code);
+    startHouseholdListener(code);
+    return code;
+  }
+
+  async function joinHousehold(rawCode) {
+    const code = (rawCode || "").trim().toUpperCase();
+    if (!code) throw new Error("empty");
+    const { db, doc, getDoc } = await fbHousehold();
+    const snap = await getDoc(doc(db, "households", code));
+    if (!snap.exists()) throw new Error("not-found");
+    householdCode = code;
+    localStorage.setItem(HOUSEHOLD_KEY, code);
+    startHouseholdListener(code);
+  }
+
+  function leaveHousehold() {
+    stopHouseholdListener();
+    householdCode = null;
+    localStorage.removeItem(HOUSEHOLD_KEY);
+    tasks = loadTasks();
+    completions = loadCompletions();
+    render();
   }
 
   /* ---------- date helpers ---------- */
@@ -275,7 +377,7 @@
       if (completions[key]) delete completions[key];
       else completions[key] = true;
     }
-    saveCompletions();
+    persistCompletions();
     render();
   }
 
@@ -591,8 +693,23 @@
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      formIcon = { type: "custom", value: reader.result };
-      renderIconGrid();
+      const img = new Image();
+      img.onload = () => {
+        // Downscale + compress so custom icons stay tiny — keeps localStorage
+        // light and fits comfortably in a shared Firestore document.
+        const size = 128;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        const scale = Math.max(size / img.width, size / img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+        formIcon = { type: "custom", value: canvas.toDataURL("image/jpeg", 0.8) };
+        renderIconGrid();
+      };
+      img.src = reader.result;
     };
     reader.readAsDataURL(file);
     e.target.value = "";
@@ -633,7 +750,7 @@
       tasks.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, createdAt: Date.now(), ...base });
     }
 
-    saveTasks();
+    persistTasks();
     closeSheet();
     render();
   }
@@ -641,21 +758,72 @@
   function handleDelete() {
     if (!editingId) return;
     tasks = tasks.filter((t) => t.id !== editingId);
-    saveTasks();
+    persistTasks();
     closeSheet();
     render();
   }
 
-  /* ---------- house code (sharing UI shell) ---------- */
+  /* ---------- house code (household sharing) ---------- */
 
   function openHouseSheet() {
+    renderHouseHome();
+    document.getElementById("houseOverlay").classList.remove("hidden");
+  }
+
+  function closeHouseSheet() {
+    document.getElementById("houseOverlay").classList.add("hidden");
+  }
+
+  function renderHouseBusy(message) {
     const content = document.getElementById("houseContent");
     content.innerHTML = "";
+    content.appendChild(el("p", "house-note", message));
+  }
+
+  function renderHouseHome(message) {
+    const content = document.getElementById("houseContent");
+    content.innerHTML = "";
+
+    if (householdCode) {
+      content.appendChild(
+        el(
+          "p",
+          "house-note",
+          "Je bent verbonden met dit huishouden. Iedereen met onderstaande code ziet en bewerkt dezelfde taken."
+        )
+      );
+      content.appendChild(el("div", "house-code-display", householdCode));
+
+      const options = el("div", "house-options");
+      const copyBtn = el("button", "btn secondary", "Code kopiëren");
+      copyBtn.type = "button";
+      copyBtn.addEventListener("click", () => {
+        navigator.clipboard?.writeText(householdCode).then(() => {
+          copyBtn.textContent = "Gekopieerd!";
+          setTimeout(() => (copyBtn.textContent = "Code kopiëren"), 1500);
+        });
+      });
+      const leaveBtn = el("button", "btn danger", "Huishouden verlaten");
+      leaveBtn.type = "button";
+      leaveBtn.addEventListener("click", () => {
+        if (confirm("Weet je zeker dat je dit huishouden wilt verlaten? Je ziet daarna weer je eigen lijst.")) {
+          leaveHousehold();
+          renderHouseHome();
+        }
+      });
+      options.appendChild(copyBtn);
+      options.appendChild(leaveBtn);
+      content.appendChild(options);
+
+      if (message) content.appendChild(el("p", "house-note", message));
+      return;
+    }
+
     content.appendChild(
       el(
         "p",
         "house-note",
-        "Deel je schema met iedereen in je huishouden met een korte code — iedereen met de code ziet dezelfde taken."
+        "Deel je schema met iedereen in je huishouden met een korte code — iedereen met de code ziet en bewerkt dezelfde taken."
       )
     );
 
@@ -668,20 +836,61 @@
     options.appendChild(joinBtn);
     content.appendChild(options);
 
-    const pending = el(
-      "p",
-      "house-note hidden",
-      "Nog niet verbonden — het delen van taken vereist een kleine cloud-database om tussen telefoons te synchroniseren. Vraag me dit te koppelen zodra dat is ingesteld."
-    );
-    content.appendChild(pending);
+    if (message) content.appendChild(el("p", "house-note", message));
 
-    [createBtn, joinBtn].forEach((btn) => btn.addEventListener("click", () => pending.classList.remove("hidden")));
+    createBtn.addEventListener("click", async () => {
+      renderHouseBusy("Huishouden wordt aangemaakt...");
+      try {
+        await createHousehold();
+        renderHouseHome();
+      } catch (err) {
+        renderHouseHome("Aanmaken is niet gelukt — probeer het opnieuw.");
+      }
+    });
 
-    document.getElementById("houseOverlay").classList.remove("hidden");
+    joinBtn.addEventListener("click", () => renderHouseJoinForm());
   }
 
-  function closeHouseSheet() {
-    document.getElementById("houseOverlay").classList.add("hidden");
+  function renderHouseJoinForm(errorMessage) {
+    const content = document.getElementById("houseContent");
+    content.innerHTML = "";
+    content.appendChild(el("p", "house-note", "Vul de code in die je van je huisgenoot hebt gekregen."));
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.id = "houseJoinInput";
+    input.maxLength = 6;
+    input.placeholder = "bijv. AB3XQ9";
+    input.autocapitalize = "characters";
+    content.appendChild(input);
+
+    if (errorMessage) content.appendChild(el("p", "house-note", errorMessage));
+
+    const options = el("div", "house-options");
+    const joinBtn = el("button", "btn primary", "Meedoen");
+    joinBtn.type = "button";
+    joinBtn.addEventListener("click", async () => {
+      const code = input.value.trim();
+      if (!code) return;
+      if (tasks.length && !confirm("Als je meedoet, wordt je huidige lijst vervangen door die van het huishouden. Doorgaan?")) {
+        return;
+      }
+      renderHouseBusy("Verbinden...");
+      try {
+        await joinHousehold(code);
+        renderHouseHome();
+      } catch (err) {
+        renderHouseJoinForm(
+          err.message === "not-found" ? "Code niet gevonden — controleer de code en probeer opnieuw." : "Er ging iets mis. Probeer het opnieuw."
+        );
+      }
+    });
+    const backBtn = el("button", "btn secondary", "Terug");
+    backBtn.type = "button";
+    backBtn.addEventListener("click", () => renderHouseHome());
+    options.appendChild(joinBtn);
+    options.appendChild(backBtn);
+    content.appendChild(options);
   }
 
   /* ---------- wiring ---------- */
@@ -709,6 +918,7 @@
       if (e.target.id === "houseOverlay") closeHouseSheet();
     });
 
+    if (householdCode) startHouseholdListener(householdCode);
     render();
   }
 

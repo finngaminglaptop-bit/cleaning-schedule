@@ -391,7 +391,8 @@ main {
 .field textarea,
 #taskName,
 #monthDayInput,
-#oneTimeDateInput {
+#oneTimeDateInput,
+#houseJoinInput {
   width: 100%;
   background: var(--card);
   border: 1px solid var(--border);
@@ -399,6 +400,14 @@ main {
   padding: 0.7rem 0.8rem;
   font-size: 1rem;
   color-scheme: dark;
+}
+
+#houseJoinInput {
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: center;
+  font-weight: 700;
 }
 
 .field textarea { resize: vertical; }
@@ -511,6 +520,8 @@ main {
 }
 
 .btn {
+  display: block;
+  width: 100%;
   flex: 1;
   border: none;
   border-radius: 10px;
